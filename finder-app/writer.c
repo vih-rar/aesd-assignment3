@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     filePtr = fopen( filePath, "w" );
     if( filePtr == NULL )
     {
-        syslog( LOG_ERR, "Error opening file %s", " filePath" );
+        syslog( LOG_ERR, "Error opening file %s", filePath );
         return 1;
     }
 
