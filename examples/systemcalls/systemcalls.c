@@ -1,5 +1,9 @@
 #include "systemcalls.h"
-
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h> 
+#include <fcntl.h>
+#include <sys/stat.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -16,6 +20,16 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+    if( cmd == NULL ) {
+        return false;
+    }
+
+    int pid = system( cmd );
+
+    if( pid == -1 )
+    {
+        return false;
+    }
 
     return true;
 }
@@ -36,6 +50,10 @@ bool do_system(const char *cmd)
 
 bool do_exec(int count, ...)
 {
+    if (count < 1)
+    {
+        return false;
+    }
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -47,7 +65,6 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
 
 /*
  * TODO:
@@ -58,10 +75,33 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    int child_pid = fork();
+    
+    if ( child_pid < 0 )
+    {
+        va_end(args);
+        return false;
+    }
+
+    bool ret_val = false;
+    if( child_pid == 0 )
+    {
+        execv( command[0], command );
+        _exit(EXIT_FAILURE);
+    }
+    int status;
+    if( waitpid( child_pid, &status, 0 ) == -1 )
+    {
+        ret_val = false;
+    }
+    else
+    {
+        ret_val = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    }
 
     va_end(args);
 
-    return true;
+    return ret_val;
 }
 
 /**
@@ -71,6 +111,10 @@ bool do_exec(int count, ...)
 */
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
+    if (count < 1)
+    {
+        return false;
+    }
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -92,8 +136,44 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    int child_pid = fork();
+    if ( child_pid < 0 )
+    {
+        va_end(args);
+        return false;
+    }
+
+    bool ret_val = false;
+
+    int fd = open( outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644 );
+    if( fd < 0 )
+    {
+        va_end(args);
+        return ret_val;
+    }
+
+    if( child_pid == 0 )
+    {
+        if (dup2(fd, 1) < 0) 
+        {
+            va_end(args); 
+            return ret_val;
+        }
+        close(fd);
+        execv( command[0], command );
+        _exit(EXIT_FAILURE);
+    }
+    int status;
+    if( waitpid( child_pid, &status, 0 ) == -1 )
+    {
+        ret_val = false;
+    }
+    else
+    {
+        ret_val = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    }
 
     va_end(args);
 
-    return true;
+    return ret_val;
 }
