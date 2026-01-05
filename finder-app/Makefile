@@ -1,8 +1,7 @@
 CROSS_COMPILE ?=
 
 CC = $(CROSS_COMPILE)gcc
-all			:
-				writer
+all: writer
 writer		: 	writer.o
 				$(CC) -o writer writer.o
 writer.o	:	writer.c
